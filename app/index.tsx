@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useRootNavigationState } from 'expo-router';
 import {
   ActivityIndicator,
@@ -6,12 +6,14 @@ import {
   Image,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 
 const PAGE_SIZE = 20;
 
 type Pokemon = {
+  id: number;
   name: string;
   image: string;
   imageBack: string;
@@ -48,11 +50,16 @@ function capitalize(str: string) {
   return str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : '';
 }
 
+function padNumber(n: number) {
+  return n.toString().padStart(3, '0');
+}
+
 export default function Home() {
   const [pokemon, setPokemon] = useState<Pokemon[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [nextUrl, setNextUrl] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const rootNavigationState = useRootNavigationState();
   const isRouterReady = rootNavigationState?.key != null;
 
@@ -62,17 +69,22 @@ export default function Home() {
     else setLoadingMore(true);
     try {
       const res = await fetch(
-        url ?? `https://pokeapi.co/api/v2/pokemon?limit=${PAGE_SIZE}&offset=0`
+        url ??
+          `https://pokeapi.co/api/v2/pokemon?limit=${PAGE_SIZE}&offset=0`
       );
       const data = await res.json();
       const next = data.next as string | null;
-      const results = (data.results ?? []) as Array<{ url: string; name: string }>;
+      const results = (data.results ?? []) as Array<{
+        url: string;
+        name: string;
+      }>;
 
       const detailed = await Promise.all(
         results.map(async (p) => {
           const r = await fetch(p.url);
           const d = await r.json();
           return {
+            id: d.id as number,
             name: d.name as string,
             image: d.sprites?.front_default ?? '',
             imageBack: d.sprites?.back_default ?? '',
@@ -100,10 +112,21 @@ export default function Home() {
     if (nextUrl && !loadingMore) fetchPage(nextUrl);
   }, [nextUrl, loadingMore, fetchPage]);
 
+  const filteredPokemon = useMemo(() => {
+    if (!searchQuery.trim()) return pokemon;
+    const q = searchQuery.trim().toLowerCase();
+    return pokemon.filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) ||
+        padNumber(p.id) === q ||
+        p.id.toString() === q
+    );
+  }, [pokemon, searchQuery]);
+
   if (!isRouterReady) {
     return (
       <View style={[styles.container, styles.centered]}>
-        <ActivityIndicator size="large" color="#2d5a4a" />
+        <ActivityIndicator size="large" color="#3d4f5c" />
         <Text style={styles.loadingText}>Loading...</Text>
       </View>
     );
@@ -112,7 +135,7 @@ export default function Home() {
   if (loading && pokemon.length === 0) {
     return (
       <View style={[styles.container, styles.centered]}>
-        <ActivityIndicator size="large" color="#2d5a4a" />
+        <ActivityIndicator size="large" color="#3d4f5c" />
         <Text style={styles.loadingText}>Loading Pokémon...</Text>
       </View>
     );
@@ -124,22 +147,43 @@ export default function Home() {
       <View style={styles.header}>
         <Text style={styles.title}>Pokédex</Text>
         <Text style={styles.subtitle}>
-          Browse and tap a Pokémon to see its details.
+          Search for a Pokémon by name or using its National Pokédex number.
         </Text>
+
+        {/* Search and filter bar */}
+        <View style={styles.searchRow}>
+          <View style={styles.searchInputWrap}>
+            <Text style={styles.searchIcon}>🔍</Text>
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Name or number"
+              placeholderTextColor="#8e9a9e"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              returnKeyType="search"
+            />
+          </View>
+          <View style={styles.filterButton}>
+            <View style={styles.filterIcon}>
+              <View style={styles.filterLine} />
+              <View style={[styles.filterLine, { marginTop: 6 }]} />
+            </View>
+          </View>
+        </View>
       </View>
 
       <FlatList
-        data={pokemon}
-        keyExtractor={(item) => item.name}
+        data={filteredPokemon}
+        keyExtractor={(item) => `${item.id}-${item.name}`}
         contentContainerStyle={styles.listContent}
         columnWrapperStyle={styles.row}
         numColumns={2}
-        onEndReached={loadMore}
+        onEndReached={searchQuery.trim() ? undefined : loadMore}
         onEndReachedThreshold={0.4}
         ListFooterComponent={
           loadingMore ? (
             <View style={styles.footerLoader}>
-              <ActivityIndicator size="small" color="#2d5a4a" />
+              <ActivityIndicator size="small" color="#3d4f5c" />
             </View>
           ) : null
         }
@@ -150,18 +194,18 @@ export default function Home() {
           return (
             <View style={styles.cardWrap}>
               <Link href={`/details/${item.name}`} style={styles.cardLink}>
-                <View style={[styles.card, { backgroundColor: bgColor + '22' }]}>
-                  <View style={styles.cardImageWrap}>
-                    <Image
-                      source={{ uri: item.image || item.imageFront }}
-                      style={styles.cardImage}
-                    />
-                  </View>
-                  <Text style={styles.cardName} numberOfLines={1}>
-                    {capitalize(item.name)}
-                  </Text>
-                  <View style={[styles.typeChip, { backgroundColor: bgColor }]}>
-                    <Text style={styles.typeChipText}>{capType || 'Unknown'}</Text>
+                <View
+                  style={[styles.card, { backgroundColor: bgColor + '1a' }]}
+                >
+                  <Image
+                    source={{ uri: item.image || item.imageFront }}
+                    style={styles.cardImage}
+                  />
+                  <View style={styles.cardTextWrap}>
+                    <Text style={styles.cardName} numberOfLines={1}>
+                      {capitalize(item.name)}
+                    </Text>
+                    <Text style={styles.cardNumber}>{padNumber(item.id)}</Text>
                   </View>
                 </View>
               </Link>
@@ -176,8 +220,7 @@ export default function Home() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8faf8',
-    paddingLeft: 40,
+    backgroundColor: '#f5f6f7',
   },
   centered: {
     justifyContent: 'center',
@@ -200,13 +243,57 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#1a1f1c',
+    color: '#2d3748',
     letterSpacing: -0.5,
   },
   subtitle: {
     fontSize: 15,
-    color: '#5a6b5e',
-    marginTop: 6,
+    color: '#718096',
+    marginTop: 8,
+    lineHeight: 22,
+  },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 16,
+    gap: 12,
+  },
+  searchInputWrap: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#e8ecef',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    minHeight: 48,
+  },
+  searchIcon: {
+    marginRight: 10,
+    fontSize: 18,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    color: '#2d3748',
+    paddingVertical: 12,
+  },
+  filterButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#3d4f5c',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  filterIcon: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  filterLine: {
+    width: 20,
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: '#fff',
   },
   listContent: {
     paddingLeft: 20,
@@ -225,43 +312,36 @@ const styles = StyleSheet.create({
   },
   cardLink: {
     flex: 1,
-    minHeight: 160,
+    minHeight: 148,
   },
   card: {
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 50,
     alignItems: 'center',
-    justifyContent: 'space-between',
-    height: 160,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.04)',
-  },
-  cardImageWrap: {
-    width: 72,
-    height: 72,
     justifyContent: 'center',
-    alignItems: 'center',
+    height: 148,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.06)',
+    overflow: 'hidden',
   },
   cardImage: {
-    width: 72,
-    height: 72,
+    width: 80,
+    height: 80,
+  },
+  cardTextWrap: {
+    alignItems: 'center',
+    marginTop: 10,
   },
   cardName: {
     fontSize: 15,
-    fontWeight: '600',
-    color: '#1a1f1c',
-    marginTop: 8,
+    fontWeight: '700',
+    color: '#1a202c',
   },
-  typeChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginTop: 6,
-  },
-  typeChipText: {
+  cardNumber: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#fff',
+    color: '#718096',
+    marginTop: 2,
   },
   footerLoader: {
     paddingVertical: 20,
