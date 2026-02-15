@@ -1,6 +1,6 @@
 # Pokédex
 
-A mobile Pokédex app built with **Expo** and **React Native**, using the [PokeAPI](https://pokeapi.co/) for Pokémon data. Browse the National Pokédex, search by name or number, and view details in a draggable bottom sheet.
+A mobile Pokédex app built with **Expo** and **React Native**, using the [PokeAPI](https://pokeapi.co/) for Pokemon data. Browse the National Pokédex, search by name or number, and view details in a draggable bottom sheet.
 
 ## Screenshots
 
