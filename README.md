@@ -22,7 +22,7 @@ A mobile Pokédex app built with **Expo** and **React Native**, using the [PokeA
   - No nav header on home (header hidden for a cleaner look).
 
 - **Detail screen**
-  - Opens as a **form sheet** (iOS) with multiple detents (30%, 50%, 70%, 100%).
+  - Opens as a **form sheet** (iOS) with multiple detents (30%, 50%, 100%).
   - Custom rounded grabber at the top.
   - Shows: name & ID, type badges, default + shiny sprites, height/weight/base XP, base stats (HP, Attack, etc.), and abilities.
 
@@ -42,7 +42,7 @@ A mobile Pokédex app built with **Expo** and **React Native**, using the [PokeA
 1. **Clone and install**
 
    ```bash
-   cd pokemon
+   cd PokemonDex
    npm install
    ```
 
@@ -61,15 +61,19 @@ A mobile Pokédex app built with **Expo** and **React Native**, using the [PokeA
 ## Project structure
 
 ```
-pokemon/
-├── app/                    # Expo Router screens
-│   ├── _layout.tsx         # Root stack (index + details)
-│   ├── index.tsx           # Home – Pokédex list, search, pagination
+PokemonDex/
+├── app/                    # Expo Router screens (file-based routing)
+│   ├── _layout.tsx         # Root Stack navigator (index + details)
+│   ├── index.tsx           # Home – Pokédex grid, search, infinite scroll
 │   └── details/
-│       └── [name].tsx      # Pokémon detail (bottom sheet)
-├── assets/                 # Icons, splash
+│       └── [name].tsx      # Pokémon detail (form sheet / bottom sheet)
+├── assets/                 # App icons, splash screen images
 ├── screenshots/            # App screenshots for README
-├── app.json
+├── App.tsx                 # Legacy entry point (unused with Expo Router)
+├── index.ts                # Expo Router entry point
+├── app.json                # Expo project configuration
+├── babel.config.js         # Babel config (babel-preset-expo)
+├── tsconfig.json           # TypeScript configuration
 ├── package.json
 └── README.md
 ```
